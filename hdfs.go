@@ -86,7 +86,7 @@ func ConnectAsUser(host string, port uint16, user string) (*Fs, error) {
     }
 
     ret, err := C.hdfsConnectAsUser(h, C.tPort(port), u)
-    if err != nil {
+    if err != nil && ret == (_Ctype_hdfsFS)(unsafe.Pointer(uintptr(0))) {
         return nil, err
     }
     return &Fs{ret}, nil

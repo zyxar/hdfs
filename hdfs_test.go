@@ -11,8 +11,6 @@ const (
     ssport = 34310
 )
 
-
-// TODO: access local filesystem
 func TestConn(t *testing.T) {
     fs, err := Connect(server, ssport)
     if err != nil {
@@ -20,7 +18,7 @@ func TestConn(t *testing.T) {
         return
     }
 
-/*    lfs, errl := Connect("", 0)
+    lfs, errl := Connect("", 0)
     if errl != nil {
         t.Errorf("Error on connecting to local hdfs: %v\n", errl)
         goto done
@@ -31,13 +29,12 @@ func TestConn(t *testing.T) {
         t.Errorf("Error on disconnecting local hdfs: %v\n", err)
     }
 
-done:*/
+done:
     err = fs.Disconnect()
     if err != nil {
         t.Errorf("Error on disconnecting: %v\n", err)
     }
 }
-
 
 func TestWrite(t *testing.T) {
     fs, err := Connect(server, ssport)
@@ -45,6 +42,8 @@ func TestWrite(t *testing.T) {
         t.Errorf("Error on connecting to hdfs: %v\n", err)
         return
     }
+
+    defer fs.Disconnect()
 
     writePath := "/tmp/gotestfile.txt"
     buf := []byte("hello hdfs world, from go!")
@@ -54,7 +53,7 @@ func TestWrite(t *testing.T) {
     file, err1 := fs.OpenFile(writePath, O_WRONLY|O_CREATE, 0, 0, 0)
     if err1 != nil {
         t.Errorf("Error on opening file: %v\n", err)
-        goto done
+        return
     }
 
     size, err = fs.Write(file, buf, len(buf))
@@ -75,11 +74,6 @@ func TestWrite(t *testing.T) {
     if err != nil {
         t.Errorf("Error on closing file: %v\n", err)
     }
-done:
-    err = fs.Disconnect()
-    if err != nil {
-        t.Errorf("Error on disconnecting: %v\n", err)
-    }
 }
 
 func TestRead(t *testing.T) {
@@ -88,6 +82,7 @@ func TestRead(t *testing.T) {
         t.Errorf("Error on connecting to hdfs: %v\n", err)
         return
     }
+    defer fs.Disconnect()
     var val uint32
     pos := int64(18)
     var cpos int64
@@ -97,13 +92,13 @@ func TestRead(t *testing.T) {
     file, err1 := fs.OpenFile(readPath, O_RDONLY, 0, 0, 0)
     if err1 != nil {
         t.Errorf("Error on opening file: %v %v\n", file, err1)
-        goto done
+        return
     }
     val, err = fs.Available(file)
     if err != nil {
         t.Errorf("Error on getting file availability: %v\n", err)
     } else {
-        fmt.Printf("\tFile availability: %v\n", val)        
+        fmt.Printf("\tFile availability: %v\n", val)
     }
     err = fs.Seek(file, pos)
     if err != nil {
@@ -132,11 +127,6 @@ func TestRead(t *testing.T) {
     if err != nil {
         t.Errorf("Error on closing file: %v\n", err)
     }
-done:
-    err = fs.Disconnect()
-    if err != nil {
-        t.Errorf("Error on disconnecting: %v\n", err)
-    }
 }
 
 func TestCopyMove(t *testing.T) {
@@ -145,9 +135,20 @@ func TestCopyMove(t *testing.T) {
         t.Errorf("Error on connecting to hdfs: %v\n", err)
         return
     }
+    defer fs.Disconnect()
+
     srcPath := "/tmp/gotestfile.txt"
     dstPath := "/tmp/gotestfile2.txt"
 
+    lfs, errl := Connect("", 0)
+    if errl != nil {
+        t.Errorf("Error on connecting to local hdfs: %v\n", errl)
+        return
+    }
+
+    defer lfs.Disconnect()
+
+    // remote
     err = fs.Copy(srcPath, fs, dstPath)
     if err != nil {
         t.Errorf("Error on copying remote to remote: %v\n", err)
@@ -160,14 +161,31 @@ func TestCopyMove(t *testing.T) {
     if err != nil {
         t.Errorf("Error on moving remote to remote: %v\n", err)
     }
-    err = fs.Rename(dstPath, srcPath) 
+    err = fs.Rename(dstPath, srcPath)
     if err != nil {
-        t.Errorf("Error on renaming file: %v\n", err)        
+        t.Errorf("Error on renaming file: %v\n", err)
     }
 
-    err = fs.Disconnect()
+    // remote - local
+    err = fs.Copy(srcPath, lfs, dstPath)
     if err != nil {
-        t.Errorf("Error on disconnecting: %v\n", err)
+        t.Errorf("Error on copying remote to local: %v\n", err)
+    }
+    err = lfs.Delete(dstPath)
+    if err != nil {
+        t.Errorf("Error on delete local file: %v\n", err)
+    }
+    err = fs.Copy(srcPath, fs, dstPath)
+    if err != nil {
+        t.Errorf("Error on copying remote to remote: %v\n", err)
+    }
+    err = fs.Move(dstPath, lfs, dstPath)
+    if err != nil {
+        t.Errorf("Error on moving remote to local: %v\n", err)
+    }
+    err = lfs.Move(dstPath, fs, dstPath)
+    if err != nil {
+        t.Errorf("Error on moving local to remote: %v\n", err)
     }
 }
 
@@ -177,6 +195,8 @@ func TestDir(t *testing.T) {
         t.Errorf("Error on connecting to hdfs: %v\n", err)
         return
     }
+    defer fs.Disconnect()
+
     slashTmp := "/tmp"
     directory := "/tmp/newdir"
     srcPath := "/tmp/gotestfile.txt"
@@ -266,8 +286,8 @@ func TestDir(t *testing.T) {
     if err != nil {
         t.Errorf("Error on getting hosts: %v\n", err)
     } else {
-        for _,v := range hosts {
-            for _,k := range v {
+        for _, v := range hosts {
+            for _, k := range v {
                 fmt.Printf("\thost - %s\n", k)
             }
         }
@@ -332,11 +352,6 @@ func TestDir(t *testing.T) {
     if err != nil {
         t.Errorf("Error on testing file existence: %v\n", err)
     }
-
-    err = fs.Disconnect()
-    if err != nil {
-        t.Errorf("Error on disconnecting: %v\n", err)
-    }
 }
 
 func TestAppend(t *testing.T) {
@@ -346,6 +361,7 @@ func TestAppend(t *testing.T) {
         t.Errorf("Error on connecting to hdfs: %v\n", err)
         return
     }
+    defer fs.Disconnect()
 
     buf := []byte("hello,")
     var rdbuf []byte
@@ -354,7 +370,7 @@ func TestAppend(t *testing.T) {
     file, err1 := fs.OpenFile(writePath, O_WRONLY, 0, 0, 0)
     if err1 != nil {
         t.Errorf("Error on opening file for writing: %v\n", err1)
-        goto done
+        return
     }
     _, err = fs.Write(file, buf, len(buf))
     if err != nil {
@@ -372,7 +388,7 @@ func TestAppend(t *testing.T) {
     file, err1 = fs.OpenFile(writePath, O_WRONLY|O_APPEND, 0, 0, 0)
     if err1 != nil {
         t.Errorf("Error on opening file for writing: %v\n", err1)
-        goto done
+        return
     }
     buf = []byte(" from go users!")
     _, err = fs.Write(file, buf, len(buf))
@@ -408,10 +424,10 @@ func TestAppend(t *testing.T) {
     }
     rdbuf = make([]byte, 32)
 
-    file, err = fs.OpenFile(writePath, O_RDONLY, 0, 0, 0) 
+    file, err = fs.OpenFile(writePath, O_RDONLY, 0, 0, 0)
     if err != nil {
         t.Errorf("Error on opening file for reading: %v %v\n", file, err)
-        goto done
+        return
     }
     val, err = fs.Read(file, rdbuf, len(rdbuf))
     if err != nil {
@@ -426,36 +442,32 @@ func TestAppend(t *testing.T) {
     if err != nil {
         t.Errorf("Error on closing file: %v\n", err)
     }
-
-done:
-    err = fs.Disconnect()
-    if err != nil {
-        t.Errorf("Error on disconnecting: %v\n", err)
-    }    
 }
 
-func TestOnUser(t *testing.T) {
-    tuser := "nobody"
-    writePath := "/tmp/gousertextfile.txt"
+func TestOnUser1(t *testing.T) {
     fs, err := Connect(server, ssport)
     if err != nil {
         t.Errorf("Error on connecting to hdfs: %v\n", err)
         return
     }
+    defer fs.Disconnect()
+
     err = fs.Chmod("/tmp/", int16(0777))
     if err != nil {
         t.Errorf("Error on changing mode to 777: %v\n", err)
-    }    
-    err = fs.Disconnect()
-    if err != nil {
-        t.Errorf("Error on disconnecting: %v\n", err)
     }
+}
 
-    fs, err = ConnectAsUser(server, ssport, tuser)
+func TestOnUser2(t *testing.T) {
+    tuser := "nobody"
+    writePath := "/tmp/gousertextfile.txt"
+    fs, err := ConnectAsUser(server, ssport, tuser)
     if err != nil {
         t.Errorf("Error on connecting as user %s: %v\n", tuser, err)
         return
     }
+    defer fs.Disconnect()
+
     buf := []byte("hello hdfs world, from go users!")
     var size uint32
     var pos int64
@@ -463,7 +475,7 @@ func TestOnUser(t *testing.T) {
     file, err1 := fs.OpenFile(writePath, O_WRONLY|O_CREATE, 0, 0, 0)
     if err1 != nil {
         t.Errorf("Error on opening file for writing: %v\n", err1)
-        goto done
+        return
     }
 
     size, err = fs.Write(file, buf, len(buf))
@@ -502,11 +514,5 @@ func TestOnUser(t *testing.T) {
     }
     if info.Owner != tuser {
         t.Errorf("HDFS new file user is not correct\n")
-    }
-
-done:
-    err = fs.Disconnect()
-    if err != nil {
-        t.Errorf("Error on disconnecting: %v\n", err)
     }
 }
