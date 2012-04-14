@@ -1,0 +1,94 @@
+>>go test
+        Wrote 26 bytes
+        File availability: 26
+        READ: from go!
+        PREAD: hello hdfs world, from go!
+        Got working directory: hdfs://brick5:34310/user/marcus
+        Got working directory: /tmp
+        Got default block size: 67108864
+        Got capacity: 8882556100608
+        Got used: 192861896704
+
+        Name: hdfs://brick5:34310/tmp
+        Type: D
+        Replication: 0
+        BlockSize: 0
+        Size: 0
+        LastMod: 2012-04-14 17:01:56 +0800 CST
+        LastAccess: 1970-01-01 08:00:00 +0800 CST
+        Owner: marcus
+        Group: supergroup
+        Permissions: 111111111
+
+        Name: hdfs://brick5:34310/tmp/appends
+        Type: F
+        Replication: 3
+        BlockSize: 67108864
+        Size: 21
+        LastMod: 2012-04-14 16:47:47 +0800 CST
+        LastAccess: 2012-04-14 16:47:47 +0800 CST
+        Owner: marcus
+        Group: supergroup
+        Permissions: 110100100
+
+        Name: hdfs://brick5:34310/tmp/gotestfile.txt
+        Type: F
+        Replication: 2
+        BlockSize: 67108864
+        Size: 26
+        LastMod: 2012-04-14 17:01:56 +0800 CST
+        LastAccess: 2012-04-14 17:01:56 +0800 CST
+        Owner: marcus
+        Group: supergroup
+        Permissions: 110100100
+
+        Name: hdfs://brick5:34310/tmp/gousertextfile.txt
+        Type: F
+        Replication: 3
+        BlockSize: 67108864
+        Size: 32
+        LastMod: 2012-04-14 16:47:48 +0800 CST
+        LastAccess: 2012-04-14 16:47:48 +0800 CST
+        Owner: nobody
+        Group: supergroup
+        Permissions: 110100100
+
+        Name: hdfs://brick5:34310/tmp/newdir
+        Type: D
+        Replication: 0
+        BlockSize: 0
+        Size: 0
+        LastMod: 2012-04-14 17:01:56 +0800 CST
+        LastAccess: 1970-01-01 08:00:00 +0800 CST
+        Owner: marcus
+        Group: supergroup
+        Permissions: 111101101
+        host - brick2.r715
+        host - brick3.r715
+        host - brick6.r715
+
+        Name: hdfs://brick5:34310/tmp/appends
+        Type: F
+        Replication: 3
+        BlockSize: 67108864
+        Size: 21
+        LastMod: 2012-04-14 17:01:56 +0800 CST
+        LastAccess: 2012-04-14 17:01:56 +0800 CST
+        Owner: marcus
+        Group: supergroup
+        Permissions: 110100100
+        READ 21 bytes: hello, from go users!
+        Wrote 32 bytes
+
+        Name: hdfs://brick5:34310/tmp/gousertextfile.txt
+        Type: F
+        Replication: 3
+        BlockSize: 67108864
+        Size: 32
+        LastMod: 2012-04-14 17:01:57 +0800 CST
+        LastAccess: 2012-04-14 17:01:57 +0800 CST
+        Owner: nobody
+        Group: supergroup
+        Permissions: 110100100
+PASS
+ok      _/home/marcus/Desktop/go/hdfs/hdfs      2.624s
