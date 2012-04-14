@@ -2,6 +2,8 @@ package hdfs
 
 // #cgo linux CFLAGS: -I/opt/jdk/include -I/opt/jdk/include/linux
 // #cgo linux LDFLAGS: -Llib -lhdfs -L/opt/jdk/jre/lib/amd64/server -ljvm
+// #cgo darwin CFLAGS: -I.libs
+// #cgo darwin LDFLAGS: -L.libs/ -lhdfs -framework JavaVM
 // #include "hdfs.h"
 /*
 int getlen(char*** ptr) {
@@ -21,8 +23,8 @@ char* getstring(char*** ptr, int i, int j) {
 import "C"
 
 import (
-    "unsafe"
     "time"
+    "unsafe"
 )
 
 const (
@@ -61,7 +63,6 @@ type FileInfo struct {
 type File hdfsFile
 type Fs hdfsFS
 
- 
 //Connect to a hdfs file system as a specific user.
 //host: A string containing either a host name, or an ip address of the namenode of a hdfs cluster. 'host' should be passed as "" if you want to connect to local filesystem. 'host' should be passed as 'default' (and port as 0) to used the 'configured' filesystem (core-site/core-default.xml).
 //port: The port on which the server is listening.
@@ -91,7 +92,6 @@ func ConnectAsUser(host string, port uint16, user string) (*Fs, error) {
     return &Fs{ret}, nil
 }
 
- 
 //Connect to a hdfs file system.
 //host: A string containing either a host name, or an ip address of the namenode of a hdfs cluster. 'host' should be passed as "" if you want to connect to local filesystem. 'host' should be passed as 'default' (and port as 0) to used the 'configured' filesystem (core-site/core-default.xml).
 //port: The port on which the server is listening.
@@ -100,7 +100,6 @@ func Connect(host string, port uint16) (*Fs, error) {
     return ConnectAsUser(host, port, "")
 }
 
- 
 //Disconnect from the hdfs file system.
 //Returns nil on success, else error
 func (fs *Fs) Disconnect() error {
@@ -113,7 +112,6 @@ func Disconnect(fs *Fs) error {
     return err
 }
 
- 
 //Open a hdfs file in given mode.
 //path: The full path to the file.
 //flags: - an | of bits/fcntl.h file flags - supported flags are O_RDONLY, O_WRONLY (meaning create or overwrite i.e., implies O_TRUNCAT), O_WRONLY|O_APPEND. Other flags are generally ignored other than (O_RDWR || (O_EXCL & O_CREAT)) which return nil and set error equal ENOTSUP.
@@ -132,7 +130,6 @@ func (fs *Fs) OpenFile(path string, flags int, buffersize int, replication int, 
     return &File{file}, nil
 }
 
- 
 //Close an open file. 
 //file: The file handle.
 //Returns nil on success, or error.  
@@ -141,7 +138,6 @@ func (fs *Fs) CloseFile(file *File) error {
     return err
 }
 
- 
 //Checks if a given path exsits on the filesystem.
 //path: The path to look for.
 //Returns nil on success, or error.
@@ -152,7 +148,6 @@ func (fs *Fs) Exists(path string) error {
     return err
 }
 
- 
 //Seek to given offset in file. This works only for files opened in read-only mode. 
 //file: The file handle.
 //pos: Offset into the file to seek into.
@@ -162,7 +157,6 @@ func (fs *Fs) Seek(file *File, pos int64) error {
     return err
 }
 
- 
 //Get the current offset in the file, in bytes.
 //file: The file handle.
 //Returns current offset, or error.
@@ -174,7 +168,6 @@ func (fs *Fs) Tell(file *File) (int64, error) {
     return int64(ret), nil
 }
 
- 
 //Read data from an open file.
 //file: The file handle.
 //buffer: The buffer to copy read bytes into.
@@ -185,7 +178,6 @@ func (fs *Fs) Read(file *File, buffer []byte, length int) (uint32, error) {
     return uint32(ret), err
 }
 
- 
 //Positional read of data from an open file.
 //file: The file handle.
 //position: Position from which to read.
@@ -197,7 +189,6 @@ func (fs *Fs) Pread(file *File, position int64, buffer []byte, length int) (uint
     return uint32(ret), err
 }
 
- 
 //Write data into an open file.
 //file: The file handle.
 //buffer: The data.
@@ -208,11 +199,10 @@ func (fs *Fs) Write(file *File, buffer []byte, length int) (uint32, error) {
     ret, err := C.hdfsWrite(fs.cptr, file.cptr, (unsafe.Pointer(&buffer[0])), C.tSize(length))
     if ret == C.tSize(-1) {
         return 0, err
-    }    
+    }
     return uint32(ret), nil
 }
 
- 
 //Flush the data. 
 //file: The file handle.
 //Returns nil on success, or error. 
@@ -220,7 +210,6 @@ func (fs *Fs) Flush(file *File) error {
     _, err := C.hdfsFlush(fs.cptr, file.cptr)
     return err
 }
-
 
 //Number of bytes that can be read from this input stream without blocking.
 //file: The file handle.
@@ -233,7 +222,6 @@ func (fs *Fs) Available(file *File) (uint32, error) {
     }
     return uint32(ret), nil
 }
-
 
 //Copy file from one filesystem to another.
 //src: The path of source file. 
@@ -252,7 +240,6 @@ func (fs *Fs) Copy(src string, dstFS *Fs, dst string) error {
     return nil
 }
 
-
 //Move file from one filesystem to another.
 //src: The path of source file. 
 //dstFS: The handle to destination filesystem.
@@ -270,7 +257,6 @@ func (fs *Fs) Move(src string, dstFS *Fs, dst string) error {
     return nil
 }
 
-
 //Delete file. 
 //path: The path of the file. 
 //Returns nil on success, or error. 
@@ -280,7 +266,6 @@ func (fs *Fs) Delete(path string) error {
     _, err := C.hdfsDelete(fs.cptr, p)
     return err
 }
-
 
 //Rename file. 
 //oldpath: The path of the source file. 
@@ -294,7 +279,6 @@ func (fs *Fs) Rename(oldpath, newpath string) error {
     return err
 }
 
- 
 //Get the current working directory for the given filesystem.
 //buffer: The user-buffer to copy path of cwd into. 
 //size: The length of user-buffer.
@@ -307,7 +291,6 @@ func (fs *Fs) GetWorkingDirectory(buffer []byte, size uint32) ([]byte, error) {
     return buffer, nil
 }
 
- 
 //Set the working directory. All relative paths will be resolved relative to it.
 //path: The path of the new 'cwd'. 
 //Returns nil on success, or error. 
@@ -318,7 +301,6 @@ func (fs *Fs) SetWorkingDirectory(path string) error {
     return err
 }
 
- 
 //Make the given file and all non-existent parents into directories.
 //path: The path of the directory. 
 //Returns nil on success, or error. 
@@ -329,7 +311,6 @@ func (fs *Fs) CreateDirectory(path string) error {
     return err
 }
 
- 
 //Set the replication of the specified file to the supplied value.
 //path: The path of the file. 
 //Returns nil on success, or error. 
@@ -340,7 +321,6 @@ func (fs *Fs) SetReplication(path string, replication int16) error {
     return err
 }
 
- 
 //Get list of files/directories for a given directory-path.
 //path: The path of the directory. 
 //Returns a slice of FileInfo struct pointer, or nil on error.
@@ -373,7 +353,6 @@ func (fs *Fs) ListDirectory(path string) ([]*FileInfo, error) {
     return ret, nil
 }
 
- 
 //Get information about a path as a single FileInfo struct pointer.
 //path: The path of the file. 
 //Returns a pointer to FileInfo object, or nil on error.
@@ -400,7 +379,6 @@ func (fs *Fs) GetPathInfo(path string) (*FileInfo, error) {
     return ret, nil
 }
 
- 
 //Get hostnames where a particular block (determined by pos & blocksize) of a file is stored.
 //path: The path of the file. 
 //start: The start of the block.
@@ -426,7 +404,6 @@ func (fs *Fs) GetHosts(path string, start, length int64) ([][]string, error) {
     return s, nil
 }
 
- 
 //Get the optimum blocksize.
 //Returns the blocksize; -1 on error. 
 func (fs *Fs) GetDefaultBlockSize() (int64, error) {
@@ -434,7 +411,6 @@ func (fs *Fs) GetDefaultBlockSize() (int64, error) {
     return int64(ret), err
 }
 
- 
 //Get the raw capacity of the filesystem.  
 //Returns the raw-capacity; -1 on error. 
 //- work around: fix ESRCH
@@ -446,14 +422,12 @@ func (fs *Fs) GetCapacity() (int64, error) {
     return int64(ret), nil
 }
 
- 
 //Get the total raw size of all files in the filesystem.
 //Returns the total-size; check on error. 
 func (fs *Fs) GetUsed() (int64, error) {
     ret, err := C.hdfsGetUsed(fs.cptr)
     return int64(ret), err
 }
-
 
 //Chown.
 //path: the path to the file or directory.
@@ -469,7 +443,6 @@ func (fs *Fs) Chown(path, owner, group string) error {
     return err
 }
 
- 
 //Chmod.
 //path: the path to the file or directory.
 //mode: the bitmask to set it to.
@@ -481,7 +454,6 @@ func (fs *Fs) Chmod(path string, mode int16) error {
     return err
 }
 
- 
 //Utime.
 //path: the path to the file or directory.
 //mtime: new modification time or 0 for only set access time in seconds.
