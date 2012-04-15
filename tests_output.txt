@@ -3,7 +3,7 @@
         File availability: 26
         READ: from go!
         PREAD: hello hdfs world, from go!
-12/04/15 15:35:16 WARN util.NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+12/04/15 15:35:16 INFO util.NativeCodeLoader: Loaded the native-hadoop library
         Got working directory: hdfs://brick5:34310/user/marcus
         Got working directory: /tmp
         Got default block size: 67108864

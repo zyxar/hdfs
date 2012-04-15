@@ -20,12 +20,33 @@ see `go doc`
 - HDFS: c bindings for libhdfs, java binary packages
 - HDFS: configured cluster
 
-You need to do a minimal modification to libhdfs code when compiling it on OS X:
+### Tips for building libhdfs on OS X ###
 
 - change `<error.h>` to `<err.h>` in `hdfsJniHelper.c`
 - change `md5sum` to `md5` in `src/saveVersion.sh`
 - run `ant -Dcompile.c++=true -Dlibhdfs=true compile-c++-libhdfs` to build libhdfs.
 - it is ok the build ends up with installation errors if you can already find compiled libs in `build/c++-build/Mac_OS_X-x86_64-64/libhdfs/.libs` or so
+
+### Tips for building libhadoop on OS X ###
+
+Based on Hadoop-1.0.1; libhadoop would be loaded by `util.NativeCodeLoader` when accessing local file system.
+
+1. java: change `-ljvm` to `-framework JavaVM` in both `Makefile.am` and `Makefile.in`
+2. libz: apply [patch](https://issues.apache.org/jira/secure/attachment/12423498/HADOOP-3659.patch) to `acinclude.m4`:
+
+        elif test ! -z "`which otool | grep -v 'no otool'`"; then
+            ac_cv_libname_$1=\"`otool -L conftest | grep $1 | sed -e 's/^[  ]*//' -e 's/ .*//' -e 's/.*\/\(.*\)$/\1/'`\";
+
+    and `configure`:
+
+        elif test ! -z "`which otool | grep -v 'no otool'`"; then
+          ac_cv_libname_z=\"`otool -L conftest | grep z | sed -e 's/^  *//' -e 's/ .*//' -e 's/.*\/\(.*\)$/\1/'`\";
+
+
+3. apply [patch](https://gist.github.com/1327040) to source code `src/org/apache/hadoop/security/JniBasedUnixGroupsNetgroupMapping.c`.
+
+4. run `ant compile-native`
+5. put the compiled library `libhadoop.1.0.0.dylib` and its symbolic links in `/usr/lib/java`, which is one of the default element of `java.library.path`.
 
 ## Prepare ##
 
@@ -49,7 +70,8 @@ You need to do a minimal modification to libhdfs code when compiling it on OS X:
 
 ## Test ##
 
-After the preparation, run `go test`; or `go test -c` and `./hdfs.test`.
+- After the preparation, correct the _constants_ in `hdfs_test.go`.
+- run `go test`; or `go test -c` and `./hdfs.test`.
 
 # Known Issues #
 
