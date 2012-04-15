@@ -2,8 +2,7 @@ package hdfs
 
 // #cgo linux CFLAGS: -I/opt/jdk/include -I/opt/jdk/include/linux
 // #cgo linux LDFLAGS: -Llib -lhdfs -L/opt/jdk/jre/lib/amd64/server -ljvm
-// #cgo darwin CFLAGS: -I.libs
-// #cgo darwin LDFLAGS: -L.libs -lhdfs -framework JavaVM
+// #cgo darwin LDFLAGS: -L/usr/lib/java -lhdfs -framework JavaVM
 // #include "hdfs.h"
 /*
 int getlen(char*** ptr) {
