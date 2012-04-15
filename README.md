@@ -53,4 +53,4 @@ After the preparation, run `go test`; or `go test -c` and `./hdfs.test`.
 
 # Known Issues #
 
-1. Currently connecting to local file system is not handled correctly. So `Connect("", 0)` would lead to error.
+1. <del>Currently connecting to local file system is not handled correctly. So `Connect("", 0)` would lead to error.</del> It is okay now accessing to local file system.
