@@ -410,6 +410,7 @@ func TestAppend(t *testing.T) {
     if err != nil {
         t.Errorf("Error on closing file: %v\n", err)
     }
+    fs.Delete(writePath)
 }
 
 func TestOnUser1(t *testing.T) {
@@ -471,4 +472,16 @@ func TestOnUser2(t *testing.T) {
     if info.Owner != tuser {
         t.Errorf("HDFS new file user is not correct\n")
     }
+    fs.Delete(writePath)
+}
+
+func TestCleanup(t *testing.T) {
+    fs, err := Connect(server, ssport)
+    if err != nil {
+        t.Errorf("Error on connecting to hdfs: %v\n", err)
+        return
+    }
+    defer fs.Disconnect()
+
+    fs.Delete("/tmp")
 }
