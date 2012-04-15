@@ -17,22 +17,17 @@ func TestConn(t *testing.T) {
         t.Errorf("Error on connecting to hdfs: %v\n", err)
         return
     }
+    defer fs.Disconnect()
 
     lfs, errl := Connect("", 0)
     if errl != nil {
         t.Errorf("Error on connecting to local hdfs: %v\n", errl)
-        goto done
+        return
     }
 
     errl = lfs.Disconnect()
     if errl != nil {
         t.Errorf("Error on disconnecting local hdfs: %v\n", err)
-    }
-
-done:
-    err = fs.Disconnect()
-    if err != nil {
-        t.Errorf("Error on disconnecting: %v\n", err)
     }
 }
 
@@ -187,6 +182,7 @@ func TestCopyMove(t *testing.T) {
     if err != nil {
         t.Errorf("Error on moving local to remote: %v\n", err)
     }
+    fs.Delete(dstPath)
 }
 
 func TestDir(t *testing.T) {
@@ -243,23 +239,14 @@ func TestDir(t *testing.T) {
     if err != nil {
         t.Errorf("Error on getting used: %v\n", err)
     } else {
-        fmt.Printf("\tGot used: %v\n", val)
+        fmt.Printf("\tGot used: %v\n\n", val)
     }
 
     info, err2 := fs.GetPathInfo(slashTmp)
     if err2 != nil {
         t.Errorf("Error on getting path info: %v %v\n", info, err2)
     } else {
-        fmt.Printf("\n\tName: %s\n", info.Name)
-        fmt.Printf("\tType: %c\n", info.Kind)
-        fmt.Printf("\tReplication: %d\n", info.Replication)
-        fmt.Printf("\tBlockSize: %v\n", info.BlockSize)
-        fmt.Printf("\tSize: %v\n", info.Size)
-        fmt.Printf("\tLastMod: %v\n", info.LastMod)
-        fmt.Printf("\tLastAccess: %v\n", info.LastAccess)
-        fmt.Printf("\tOwner: %s\n", info.Owner)
-        fmt.Printf("\tGroup: %s\n", info.Group)
-        fmt.Printf("\tPermissions: %b\n", info.Permissions)
+        fmt.Printf("%s\n", info)
     }
 
     ifo, err3 := fs.ListDirectory(slashTmp)
@@ -267,16 +254,7 @@ func TestDir(t *testing.T) {
         t.Errorf("Error on listing directory: %v\n", err)
     } else {
         for _, v := range ifo {
-            fmt.Printf("\n\tName: %s\n", v.Name)
-            fmt.Printf("\tType: %c\n", v.Kind)
-            fmt.Printf("\tReplication: %d\n", v.Replication)
-            fmt.Printf("\tBlockSize: %v\n", v.BlockSize)
-            fmt.Printf("\tSize: %v\n", v.Size)
-            fmt.Printf("\tLastMod: %v\n", v.LastMod)
-            fmt.Printf("\tLastAccess: %v\n", v.LastAccess)
-            fmt.Printf("\tOwner: %s\n", v.Owner)
-            fmt.Printf("\tGroup: %s\n", v.Group)
-            fmt.Printf("\tPermissions: %b\n", v.Permissions)
+            fmt.Printf("%s\n", v)
             //fmt.Printf("\tmeta: %p\n", v.meta.cptr)
         }
     }
@@ -291,6 +269,7 @@ func TestDir(t *testing.T) {
                 fmt.Printf("\thost - %s\n", k)
             }
         }
+        fmt.Printf("\n")
     }
 
     newOwner := "root"
@@ -408,16 +387,7 @@ func TestAppend(t *testing.T) {
     if err != nil {
         t.Errorf("Error on getting path info: %v %v\n", info, err)
     } else {
-        fmt.Printf("\n\tName: %s\n", info.Name)
-        fmt.Printf("\tType: %c\n", info.Kind)
-        fmt.Printf("\tReplication: %d\n", info.Replication)
-        fmt.Printf("\tBlockSize: %v\n", info.BlockSize)
-        fmt.Printf("\tSize: %v\n", info.Size)
-        fmt.Printf("\tLastMod: %v\n", info.LastMod)
-        fmt.Printf("\tLastAccess: %v\n", info.LastAccess)
-        fmt.Printf("\tOwner: %s\n", info.Owner)
-        fmt.Printf("\tGroup: %s\n", info.Group)
-        fmt.Printf("\tPermissions: %b\n", info.Permissions)
+        fmt.Printf("%s\n", info)
     }
     if info.Size != int64(len("hello, from go users!")) {
         t.Errorf("Appended file size not correct\n")
@@ -432,8 +402,6 @@ func TestAppend(t *testing.T) {
     val, err = fs.Read(file, rdbuf, len(rdbuf))
     if err != nil {
         t.Errorf("Error on reading file: %v\n", err)
-    } else {
-        fmt.Printf("\tREAD %d bytes: %s\n", val, rdbuf)
     }
     if string(rdbuf[:val]) != "hello, from go users!" {
         t.Errorf("Appended file content not correct\n")
@@ -469,7 +437,6 @@ func TestOnUser2(t *testing.T) {
     defer fs.Disconnect()
 
     buf := []byte("hello hdfs world, from go users!")
-    var size uint32
     var pos int64
     var info *FileInfo
     file, err1 := fs.OpenFile(writePath, O_WRONLY|O_CREATE, 0, 0, 0)
@@ -478,11 +445,9 @@ func TestOnUser2(t *testing.T) {
         return
     }
 
-    size, err = fs.Write(file, buf, len(buf))
+    _, err = fs.Write(file, buf, len(buf))
     if err != nil {
         t.Errorf("Error on writing bytes to file: %v\n", err)
-    } else {
-        fmt.Printf("\tWrote %d bytes\n", size)
     }
     pos, err = fs.Tell(file)
     if err != nil {
@@ -501,16 +466,7 @@ func TestOnUser2(t *testing.T) {
     if err != nil {
         t.Errorf("Error on getting path info: %v %v\n", info, err)
     } else {
-        fmt.Printf("\n\tName: %s\n", info.Name)
-        fmt.Printf("\tType: %c\n", info.Kind)
-        fmt.Printf("\tReplication: %d\n", info.Replication)
-        fmt.Printf("\tBlockSize: %v\n", info.BlockSize)
-        fmt.Printf("\tSize: %v\n", info.Size)
-        fmt.Printf("\tLastMod: %v\n", info.LastMod)
-        fmt.Printf("\tLastAccess: %v\n", info.LastAccess)
-        fmt.Printf("\tOwner: %s\n", info.Owner)
-        fmt.Printf("\tGroup: %s\n", info.Group)
-        fmt.Printf("\tPermissions: %b\n", info.Permissions)
+        fmt.Printf("%s\n", info)
     }
     if info.Owner != tuser {
         t.Errorf("HDFS new file user is not correct\n")

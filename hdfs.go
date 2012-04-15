@@ -3,7 +3,7 @@ package hdfs
 // #cgo linux CFLAGS: -I/opt/jdk/include -I/opt/jdk/include/linux
 // #cgo linux LDFLAGS: -Llib -lhdfs -L/opt/jdk/jre/lib/amd64/server -ljvm
 // #cgo darwin CFLAGS: -I.libs
-// #cgo darwin LDFLAGS: -L.libs/ -lhdfs -framework JavaVM
+// #cgo darwin LDFLAGS: -L.libs -lhdfs -framework JavaVM
 // #include "hdfs.h"
 /*
 int getlen(char*** ptr) {
@@ -23,6 +23,7 @@ char* getstring(char*** ptr, int i, int j) {
 import "C"
 
 import (
+    "fmt"
     "time"
     "unsafe"
 )
@@ -63,12 +64,25 @@ type FileInfo struct {
 type File hdfsFile
 type Fs hdfsFS
 
+func (info *FileInfo) String() (ret string) {
+    ret = fmt.Sprintf("%-8s\t:  %s\n", "Name", info.Name) +
+        fmt.Sprintf("%-8s\t:  %c\n", "Type", info.Kind) +
+        fmt.Sprintf("%-8s\t:  %d\n", "Replication", info.Replication) +
+        fmt.Sprintf("%-8s\t:  %v\n", "BlockSize", info.BlockSize) +
+        fmt.Sprintf("%-8s\t:  %v\n", "Size", info.Size) +
+        fmt.Sprintf("%-8s\t:  %v\n", "LastMod", info.LastMod) +
+        fmt.Sprintf("%-8s\t:  %v\n", "LastAccess", info.LastAccess) +
+        fmt.Sprintf("%-8s\t:  %s\n", "Owner", info.Owner) +
+        fmt.Sprintf("%-8s\t:  %s\n", "Group", info.Group) +
+        fmt.Sprintf("%-8s\t:  %b\n", "Permissions", info.Permissions)
+    return
+}
+
 //Connect to a hdfs file system as a specific user.
 //host: A string containing either a host name, or an ip address of the namenode of a hdfs cluster. 'host' should be passed as "" if you want to connect to local filesystem. 'host' should be passed as 'default' (and port as 0) to used the 'configured' filesystem (core-site/core-default.xml).
 //port: The port on which the server is listening.
 //user: the user name (this is hadoop domain user). Or "" is equivelant to Connect(host, port).
 //Returns a handle to the filesystem or nil on error.
-//- TODO: access local filesystem
 func ConnectAsUser(host string, port uint16, user string) (*Fs, error) {
     var h *C.char
     var u *C.char
