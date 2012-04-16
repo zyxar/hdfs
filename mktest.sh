@@ -1,6 +1,5 @@
 #!/bin/bash
 
-HADOOP_LIB_DIR=tmp/lib
 HADOOP_CONF_DIR=.libs/conf
 
 CLASSPATH="${HADOOP_CONF_DIR}"
