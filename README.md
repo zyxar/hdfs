@@ -22,10 +22,12 @@ see `go doc`
 
 ### Tips for building libhdfs on OS X ###
 
-- change `<error.h>` to `<err.h>` in `hdfsJniHelper.c`
-- change `md5sum` to `md5` in `src/saveVersion.sh`
-- run `ant -Dcompile.c++=true -Dlibhdfs=true compile-c++-libhdfs` to build libhdfs.
-- it is ok the build ends up with installation errors if you can already find compiled libs in `build/c++-build/Mac_OS_X-x86_64-64/libhdfs/.libs` or so
+1. change `<error.h>` to `<err.h>` in `hdfsJniHelper.c`
+2. change `md5sum` to `md5` in `src/saveVersion.sh`
+3. run `ant -Dcompile.c++=true -Dlibhdfs=true compile-c++-libhdfs` to build libhdfs.
+4. it is ok the build ends up with installation errors if you can already find compiled libs in `build/c++-build/Mac_OS_X-x86_64-64/libhdfs/.libs` or so
+5. put libs in `/usr/lib/java`
+6. change *install_name* for libhdfs: `sudo install_name_tool -id /usr/lib/java/libhdfs.0.dylib /usr/lib/java/libhdfs.0.dylib`
 
 ### Tips for building libhadoop on OS X ###
 
@@ -40,23 +42,18 @@ Based on Hadoop-1.0.1; libhadoop would be loaded by `util.NativeCodeLoader` when
     and `configure`:
 
         elif test ! -z "`which otool | grep -v 'no otool'`"; then
-          ac_cv_libname_z=\"`otool -L conftest | grep z | sed -e 's/^  *//' -e 's/ .*//' -e 's/.*\/\(.*\)$/\1/'`\";
+            ac_cv_libname_z=\"`otool -L conftest | grep z | sed -e 's/^  *//' -e 's/ .*//' -e 's/.*\/\(.*\)$/\1/'`\";
 
 
 3. apply [patch](https://gist.github.com/1327040) to source code `src/org/apache/hadoop/security/JniBasedUnixGroupsNetgroupMapping.c`.
 
 4. run `ant compile-native`
 5. put the compiled library `libhadoop.1.0.0.dylib` and its symbolic links in `/usr/lib/java`, which is one of the default element of `java.library.path`.
+6. change *install_name* for libhadoop: `sudo install_name_tool -id /usr/lib/java/libhadoop.1.dylib /usr/lib/java/libhadoop.1.0.0.dylib`
 
 ## Prepare ##
 
-1. set `CLASSPATH`:
-
-        for jr in `ls ../lib/*.jar`;do
-        CLASSPATH=$jr:$CLASSPATH;done
-        export CLASSPATH
-
-    where `../lib` contains all the `.jar` essential to hdfs.
+1. put `.jar` from hadoop in `.libs/javalibs`; `conf/` in `.libs`; see `mktest.sh` for details, or you can modify it to accommodate your environment.
 
 2. set `LD_LIBRARY_PATH` for Linux:
 
@@ -71,7 +68,7 @@ Based on Hadoop-1.0.1; libhadoop would be loaded by `util.NativeCodeLoader` when
 ## Test ##
 
 - After the preparation, correct the _constants_ in `hdfs_test.go`.
-- run `go test`; or `go test -c` and `./hdfs.test`.
+- run `./mktest.sh`.
 
 # Known Issues #
 
