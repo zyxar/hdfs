@@ -77,7 +77,7 @@ func (info *FileInfo) String() (ret string) {
     return
 }
 
-//Connect to a hdfs file system as a specific user.
+//Factory method for get a *hdfs.Fs handle: connect to a hdfs file system as a specific user.
 //host: A string containing either a host name, or an ip address of the namenode of a hdfs cluster. 'host' should be passed as "" if you want to connect to local filesystem. 'host' should be passed as 'default' (and port as 0) to used the 'configured' filesystem (core-site/core-default.xml).
 //port: The port on which the server is listening.
 //user: the user name (this is hadoop domain user). Or "" is equivelant to Connect(host, port).
@@ -105,7 +105,7 @@ func ConnectAsUser(host string, port uint16, user string) (*Fs, error) {
     return &Fs{ret}, nil
 }
 
-//Connect to a hdfs file system.
+//Factory method for get a *hdfs.Fs handle: connect to a hdfs file system.
 //host: A string containing either a host name, or an ip address of the namenode of a hdfs cluster. 'host' should be passed as "" if you want to connect to local filesystem. 'host' should be passed as 'default' (and port as 0) to used the 'configured' filesystem (core-site/core-default.xml).
 //port: The port on which the server is listening.
 //Returns a handle to the filesystem or nil on error.
@@ -116,13 +116,15 @@ func Connect(host string, port uint16) (*Fs, error) {
 //Disconnect from the hdfs file system.
 //Returns nil on success, else error
 func (fs *Fs) Disconnect() error {
-    _, err := C.hdfsDisconnect(fs.cptr)
-    return err
+    ret, err := C.hdfsDisconnect(fs.cptr)
+    if err != nil && ret == C.int(-1) {
+        return err
+    }
+    return nil
 }
 
 func Disconnect(fs *Fs) error {
-    _, err := C.hdfsDisconnect(fs.cptr)
-    return err
+    return fs.Disconnect()
 }
 
 //Open a hdfs file in given mode.
@@ -132,12 +134,11 @@ func Disconnect(fs *Fs) error {
 //replication: Block replication - pass 0 if you want to use the default configured values.
 //blocksize: Size of block - pass 0 if you want to use the default configured values.
 //Returns the handle to the open file or nil on error.
-//- work around: fix ESRCH for CREATE|WRONLY
 func (fs *Fs) OpenFile(path string, flags int, buffersize int, replication int, blocksize uint32) (*File, error) {
     p := C.CString(path)
     defer C.free(unsafe.Pointer(p))
     file, err := C.hdfsOpenFile(fs.cptr, p, C.int(flags), C.int(buffersize), C.short(replication), C.tSize(blocksize))
-    if file == (C.hdfsFile)(unsafe.Pointer(uintptr(0))) {
+    if err != nil && file == (C.hdfsFile)(unsafe.Pointer(uintptr(0))) {
         return nil, err
     }
     return &File{file}, nil
@@ -147,8 +148,11 @@ func (fs *Fs) OpenFile(path string, flags int, buffersize int, replication int, 
 //file: The file handle.
 //Returns nil on success, or error.  
 func (fs *Fs) CloseFile(file *File) error {
-    _, err := C.hdfsCloseFile(fs.cptr, file.cptr)
-    return err
+    ret, err := C.hdfsCloseFile(fs.cptr, file.cptr)
+    if err != nil && ret == C.int(-1) {
+        return err
+    }
+    return nil
 }
 
 //Checks if a given path exsits on the filesystem.
@@ -157,8 +161,11 @@ func (fs *Fs) CloseFile(file *File) error {
 func (fs *Fs) Exists(path string) error {
     p := C.CString(path)
     defer C.free(unsafe.Pointer(p))
-    _, err := C.hdfsExists(fs.cptr, p)
-    return err
+    ret, err := C.hdfsExists(fs.cptr, p)
+    if err != nil && ret == C.int(-1) {
+        return err
+    }
+    return nil
 }
 
 //Seek to given offset in file. This works only for files opened in read-only mode. 
@@ -166,8 +173,11 @@ func (fs *Fs) Exists(path string) error {
 //pos: Offset into the file to seek into.
 //Returns nil on success, or error.  
 func (fs *Fs) Seek(file *File, pos int64) error {
-    _, err := C.hdfsSeek(fs.cptr, file.cptr, C.tOffset(pos))
-    return err
+    ret, err := C.hdfsSeek(fs.cptr, file.cptr, C.tOffset(pos))
+    if err != nil && ret == C.int(-1) {
+        return err
+    }
+    return nil
 }
 
 //Get the current offset in the file, in bytes.
@@ -175,7 +185,7 @@ func (fs *Fs) Seek(file *File, pos int64) error {
 //Returns current offset, or error.
 func (fs *Fs) Tell(file *File) (int64, error) {
     ret, err := C.hdfsTell(fs.cptr, file.cptr)
-    if err != nil {
+    if err != nil && ret == C.tOffset(-1) {
         return -1, err
     }
     return int64(ret), nil
@@ -188,7 +198,10 @@ func (fs *Fs) Tell(file *File) (int64, error) {
 //Returns the number of bytes actually read, possibly less than than length; or error.
 func (fs *Fs) Read(file *File, buffer []byte, length int) (uint32, error) {
     ret, err := C.hdfsRead(fs.cptr, file.cptr, (unsafe.Pointer(&buffer[0])), C.tSize(length))
-    return uint32(ret), err
+    if err != nil && ret == C.tSize(-1) {
+        return 0, err
+    }
+    return uint32(ret), nil
 }
 
 //Positional read of data from an open file.
@@ -199,7 +212,10 @@ func (fs *Fs) Read(file *File, buffer []byte, length int) (uint32, error) {
 //Returns the number of bytes actually read, possibly less than length; or error.
 func (fs *Fs) Pread(file *File, position int64, buffer []byte, length int) (uint32, error) {
     ret, err := C.hdfsPread(fs.cptr, file.cptr, C.tOffset(position), (unsafe.Pointer(&buffer[0])), C.tSize(length))
-    return uint32(ret), err
+    if err != nil && ret == C.tSize(-1) {
+        return 0, err
+    }
+    return uint32(ret), nil
 }
 
 //Write data into an open file.
@@ -210,7 +226,7 @@ func (fs *Fs) Pread(file *File, position int64, buffer []byte, length int) (uint
 //- work around: fix ESRCH
 func (fs *Fs) Write(file *File, buffer []byte, length int) (uint32, error) {
     ret, err := C.hdfsWrite(fs.cptr, file.cptr, (unsafe.Pointer(&buffer[0])), C.tSize(length))
-    if ret == C.tSize(-1) {
+    if err != nil && ret == C.tSize(-1) {
         return 0, err
     }
     return uint32(ret), nil
@@ -220,8 +236,11 @@ func (fs *Fs) Write(file *File, buffer []byte, length int) (uint32, error) {
 //file: The file handle.
 //Returns nil on success, or error. 
 func (fs *Fs) Flush(file *File) error {
-    _, err := C.hdfsFlush(fs.cptr, file.cptr)
-    return err
+    ret, err := C.hdfsFlush(fs.cptr, file.cptr)
+    if err != nil && ret == C.int(-1) {
+        return err
+    }
+    return nil
 }
 
 //Number of bytes that can be read from this input stream without blocking.
@@ -230,7 +249,7 @@ func (fs *Fs) Flush(file *File) error {
 //- work around: fix ESRCH
 func (fs *Fs) Available(file *File) (uint32, error) {
     ret, err := C.hdfsAvailable(fs.cptr, file.cptr)
-    if ret == C.int(-1) {
+    if err != nil && ret == C.int(-1) {
         return 0, err
     }
     return uint32(ret), nil
@@ -247,7 +266,7 @@ func (fs *Fs) Copy(src string, dstFS *Fs, dst string) error {
     defer C.free(unsafe.Pointer(srcstr))
     defer C.free(unsafe.Pointer(dststr))
     ret, err := C.hdfsCopy(fs.cptr, srcstr, dstFS.cptr, dststr)
-    if ret == C.int(-1) {
+    if err != nil && ret == C.int(-1) {
         return err
     }
     return nil
@@ -264,7 +283,7 @@ func (fs *Fs) Move(src string, dstFS *Fs, dst string) error {
     defer C.free(unsafe.Pointer(srcstr))
     defer C.free(unsafe.Pointer(dststr))
     ret, err := C.hdfsMove(fs.cptr, srcstr, dstFS.cptr, dststr)
-    if ret == C.int(-1) {
+    if err != nil && ret == C.int(-1) {
         return err
     }
     return nil
@@ -276,8 +295,11 @@ func (fs *Fs) Move(src string, dstFS *Fs, dst string) error {
 func (fs *Fs) Delete(path string) error {
     p := C.CString(path)
     defer C.free(unsafe.Pointer(p))
-    _, err := C.hdfsDelete(fs.cptr, p)
-    return err
+    ret, err := C.hdfsDelete(fs.cptr, p)
+    if err != nil && ret == C.int(-1) {
+        return err
+    }
+    return nil
 }
 
 //Rename file. 
@@ -288,8 +310,11 @@ func (fs *Fs) Rename(oldpath, newpath string) error {
     op, np := C.CString(oldpath), C.CString(newpath)
     defer C.free(unsafe.Pointer(op))
     defer C.free(unsafe.Pointer(np))
-    _, err := C.hdfsRename(fs.cptr, op, np)
-    return err
+    ret, err := C.hdfsRename(fs.cptr, op, np)
+    if err != nil && ret == C.int(-1) {
+        return err
+    }
+    return nil
 }
 
 //Get the current working directory for the given filesystem.
@@ -310,8 +335,11 @@ func (fs *Fs) GetWorkingDirectory(buffer []byte, size uint32) ([]byte, error) {
 func (fs *Fs) SetWorkingDirectory(path string) error {
     p := C.CString(path)
     defer C.free(unsafe.Pointer(p))
-    _, err := C.hdfsSetWorkingDirectory(fs.cptr, p)
-    return err
+    ret, err := C.hdfsSetWorkingDirectory(fs.cptr, p)
+    if err != nil && ret == C.int(-1) {
+        return err
+    }
+    return nil
 }
 
 //Make the given file and all non-existent parents into directories.
@@ -320,8 +348,11 @@ func (fs *Fs) SetWorkingDirectory(path string) error {
 func (fs *Fs) CreateDirectory(path string) error {
     p := C.CString(path)
     defer C.free(unsafe.Pointer(p))
-    _, err := C.hdfsCreateDirectory(fs.cptr, p)
-    return err
+    ret, err := C.hdfsCreateDirectory(fs.cptr, p)
+    if err != nil && ret == C.int(-1) {
+        return err
+    }
+    return nil
 }
 
 //Set the replication of the specified file to the supplied value.
@@ -330,8 +361,11 @@ func (fs *Fs) CreateDirectory(path string) error {
 func (fs *Fs) SetReplication(path string, replication int16) error {
     p := C.CString(path)
     defer C.free(unsafe.Pointer(p))
-    _, err := C.hdfsSetReplication(fs.cptr, p, C.int16_t(replication))
-    return err
+    ret, err := C.hdfsSetReplication(fs.cptr, p, C.int16_t(replication))
+    if err != nil && ret == C.int(-1) {
+        return err
+    }
+    return nil
 }
 
 //Get list of files/directories for a given directory-path.
@@ -421,7 +455,10 @@ func (fs *Fs) GetHosts(path string, start, length int64) ([][]string, error) {
 //Returns the blocksize; -1 on error. 
 func (fs *Fs) GetDefaultBlockSize() (int64, error) {
     ret, err := C.hdfsGetDefaultBlockSize(fs.cptr)
-    return int64(ret), err
+    if err != nil && ret == C.tOffset(-1) {
+        return -1, err
+    }
+    return int64(ret), nil
 }
 
 //Get the raw capacity of the filesystem.  
@@ -429,7 +466,7 @@ func (fs *Fs) GetDefaultBlockSize() (int64, error) {
 //- work around: fix ESRCH
 func (fs *Fs) GetCapacity() (int64, error) {
     ret, err := C.hdfsGetCapacity(fs.cptr)
-    if ret == C.tOffset(-1) {
+    if err != nil && ret == C.tOffset(-1) {
         return -1, err
     }
     return int64(ret), nil
@@ -439,7 +476,10 @@ func (fs *Fs) GetCapacity() (int64, error) {
 //Returns the total-size; check on error. 
 func (fs *Fs) GetUsed() (int64, error) {
     ret, err := C.hdfsGetUsed(fs.cptr)
-    return int64(ret), err
+    if err != nil && ret == C.tOffset(-1) {
+        return -1, err
+    }
+    return int64(ret), nil
 }
 
 //Chown.
@@ -452,8 +492,11 @@ func (fs *Fs) Chown(path, owner, group string) error {
     defer C.free(unsafe.Pointer(p))
     defer C.free(unsafe.Pointer(o))
     defer C.free(unsafe.Pointer(g))
-    _, err := C.hdfsChown(fs.cptr, p, o, g)
-    return err
+    ret, err := C.hdfsChown(fs.cptr, p, o, g)
+    if err != nil && ret == C.int(-1) {
+        return err
+    }
+    return nil
 }
 
 //Chmod.
@@ -463,8 +506,11 @@ func (fs *Fs) Chown(path, owner, group string) error {
 func (fs *Fs) Chmod(path string, mode int16) error {
     p := C.CString(path)
     defer C.free(unsafe.Pointer(p))
-    _, err := C.hdfsChmod(fs.cptr, p, C.short(mode))
-    return err
+    ret, err := C.hdfsChmod(fs.cptr, p, C.short(mode))
+    if err != nil && ret == C.int(-1) {
+        return err
+    }
+    return nil
 }
 
 //Utime.
@@ -475,6 +521,9 @@ func (fs *Fs) Chmod(path string, mode int16) error {
 func (fs *Fs) Utime(path string, mtime, atime time.Time) error {
     p := C.CString(path)
     defer C.free(unsafe.Pointer(p))
-    _, err := C.hdfsUtime(fs.cptr, p, C.tTime(mtime.Unix()), C.tTime(atime.Unix()))
-    return err
+    ret, err := C.hdfsUtime(fs.cptr, p, C.tTime(mtime.Unix()), C.tTime(atime.Unix()))
+    if err != nil && ret == C.int(-1) {
+        return err
+    }
+    return nil
 }
