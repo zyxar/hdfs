@@ -41,8 +41,8 @@ type hdfsFS struct {
 }
 
 type hdfsFile struct {
-    cptr  C.hdfsFile
-    mutex *sync.RWMutex
+    cptr C.hdfsFile
+    *sync.RWMutex
 }
 
 type hdfsFileInfo struct {
@@ -175,8 +175,8 @@ func (fs *Fs) Exists(path string) error {
 //pos: Offset into the file to seek into.
 //Returns nil on success, or error.  
 func (fs *Fs) Seek(file *File, pos int64) error {
-    file.mutex.Lock()
-    defer file.mutex.Unlock()
+    file.Lock()
+    defer file.Unlock()
     ret, err := C.hdfsSeek(fs.cptr, file.cptr, C.tOffset(pos))
     if err != nil && ret == C.int(-1) {
         return err
@@ -201,8 +201,8 @@ func (fs *Fs) Tell(file *File) (int64, error) {
 //length: The length of the buffer.
 //Returns the number of bytes actually read, possibly less than than length; or error.
 func (fs *Fs) Read(file *File, buffer []byte, length int) (uint32, error) {
-    file.mutex.RLock()
-    defer file.mutex.RUnlock()
+    file.RLock()
+    defer file.RUnlock()
     ret, err := C.hdfsRead(fs.cptr, file.cptr, (unsafe.Pointer(&buffer[0])), C.tSize(length))
     if err != nil && ret == C.tSize(-1) {
         return 0, err
@@ -217,8 +217,8 @@ func (fs *Fs) Read(file *File, buffer []byte, length int) (uint32, error) {
 //length: The length of the buffer.
 //Returns the number of bytes actually read, possibly less than length; or error.
 func (fs *Fs) Pread(file *File, position int64, buffer []byte, length int) (uint32, error) {
-    file.mutex.RLock()
-    defer file.mutex.RUnlock()
+    file.RLock()
+    defer file.RUnlock()
     ret, err := C.hdfsPread(fs.cptr, file.cptr, C.tOffset(position), (unsafe.Pointer(&buffer[0])), C.tSize(length))
     if err != nil && ret == C.tSize(-1) {
         return 0, err
@@ -232,8 +232,8 @@ func (fs *Fs) Pread(file *File, position int64, buffer []byte, length int) (uint
 //length: The no. of bytes to write. 
 //Returns the number of bytes written; or error.
 func (fs *Fs) Write(file *File, buffer []byte, length int) (uint32, error) {
-    file.mutex.Lock()
-    defer file.mutex.Unlock()
+    file.Lock()
+    defer file.Unlock()
     ret, err := C.hdfsWrite(fs.cptr, file.cptr, (unsafe.Pointer(&buffer[0])), C.tSize(length))
     if err != nil && ret == C.tSize(-1) {
         return 0, err
@@ -245,8 +245,8 @@ func (fs *Fs) Write(file *File, buffer []byte, length int) (uint32, error) {
 //file: The file handle.
 //Returns nil on success, or error. 
 func (fs *Fs) Flush(file *File) error {
-    file.mutex.Lock()
-    defer file.mutex.Unlock()
+    file.Lock()
+    defer file.Unlock()
     ret, err := C.hdfsFlush(fs.cptr, file.cptr)
     if err != nil && ret == C.int(-1) {
         return err
@@ -258,8 +258,8 @@ func (fs *Fs) Flush(file *File) error {
 //file: The file handle.
 //Returns available bytes; or error. 
 func (fs *Fs) Available(file *File) (uint32, error) {
-    file.mutex.RLock()
-    defer file.mutex.RUnlock()
+    file.RLock()
+    defer file.RUnlock()
     ret, err := C.hdfsAvailable(fs.cptr, file.cptr)
     if err != nil && ret == C.int(-1) {
         return 0, err
