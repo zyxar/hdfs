@@ -23,6 +23,7 @@ import "C"
 
 import (
     "fmt"
+    "sync"
     "time"
     "unsafe"
 )
@@ -40,7 +41,8 @@ type hdfsFS struct {
 }
 
 type hdfsFile struct {
-    cptr C.hdfsFile
+    cptr  C.hdfsFile
+    mutex *sync.RWMutex
 }
 
 type hdfsFileInfo struct {
@@ -141,7 +143,7 @@ func (fs *Fs) OpenFile(path string, flags int, buffersize int, replication int, 
     if err != nil && file == (C.hdfsFile)(unsafe.Pointer(uintptr(0))) {
         return nil, err
     }
-    return &File{file}, nil
+    return &File{file, new(sync.RWMutex)}, nil
 }
 
 //Close an open file. 
@@ -173,6 +175,8 @@ func (fs *Fs) Exists(path string) error {
 //pos: Offset into the file to seek into.
 //Returns nil on success, or error.  
 func (fs *Fs) Seek(file *File, pos int64) error {
+    file.mutex.Lock()
+    defer file.mutex.Unlock()
     ret, err := C.hdfsSeek(fs.cptr, file.cptr, C.tOffset(pos))
     if err != nil && ret == C.int(-1) {
         return err
@@ -197,6 +201,8 @@ func (fs *Fs) Tell(file *File) (int64, error) {
 //length: The length of the buffer.
 //Returns the number of bytes actually read, possibly less than than length; or error.
 func (fs *Fs) Read(file *File, buffer []byte, length int) (uint32, error) {
+    file.mutex.RLock()
+    defer file.mutex.RUnlock()
     ret, err := C.hdfsRead(fs.cptr, file.cptr, (unsafe.Pointer(&buffer[0])), C.tSize(length))
     if err != nil && ret == C.tSize(-1) {
         return 0, err
@@ -211,6 +217,8 @@ func (fs *Fs) Read(file *File, buffer []byte, length int) (uint32, error) {
 //length: The length of the buffer.
 //Returns the number of bytes actually read, possibly less than length; or error.
 func (fs *Fs) Pread(file *File, position int64, buffer []byte, length int) (uint32, error) {
+    file.mutex.RLock()
+    defer file.mutex.RUnlock()
     ret, err := C.hdfsPread(fs.cptr, file.cptr, C.tOffset(position), (unsafe.Pointer(&buffer[0])), C.tSize(length))
     if err != nil && ret == C.tSize(-1) {
         return 0, err
@@ -223,8 +231,9 @@ func (fs *Fs) Pread(file *File, position int64, buffer []byte, length int) (uint
 //buffer: The data.
 //length: The no. of bytes to write. 
 //Returns the number of bytes written; or error.
-//- work around: fix ESRCH
 func (fs *Fs) Write(file *File, buffer []byte, length int) (uint32, error) {
+    file.mutex.Lock()
+    defer file.mutex.Unlock()
     ret, err := C.hdfsWrite(fs.cptr, file.cptr, (unsafe.Pointer(&buffer[0])), C.tSize(length))
     if err != nil && ret == C.tSize(-1) {
         return 0, err
@@ -236,6 +245,8 @@ func (fs *Fs) Write(file *File, buffer []byte, length int) (uint32, error) {
 //file: The file handle.
 //Returns nil on success, or error. 
 func (fs *Fs) Flush(file *File) error {
+    file.mutex.Lock()
+    defer file.mutex.Unlock()
     ret, err := C.hdfsFlush(fs.cptr, file.cptr)
     if err != nil && ret == C.int(-1) {
         return err
@@ -246,8 +257,9 @@ func (fs *Fs) Flush(file *File) error {
 //Number of bytes that can be read from this input stream without blocking.
 //file: The file handle.
 //Returns available bytes; or error. 
-//- work around: fix ESRCH
 func (fs *Fs) Available(file *File) (uint32, error) {
+    file.mutex.RLock()
+    defer file.mutex.RUnlock()
     ret, err := C.hdfsAvailable(fs.cptr, file.cptr)
     if err != nil && ret == C.int(-1) {
         return 0, err
@@ -463,7 +475,6 @@ func (fs *Fs) GetDefaultBlockSize() (int64, error) {
 
 //Get the raw capacity of the filesystem.  
 //Returns the raw-capacity; -1 on error. 
-//- work around: fix ESRCH
 func (fs *Fs) GetCapacity() (int64, error) {
     ret, err := C.hdfsGetCapacity(fs.cptr)
     if err != nil && ret == C.tOffset(-1) {
