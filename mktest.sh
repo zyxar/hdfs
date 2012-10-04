@@ -10,4 +10,4 @@ CLASSPATH=$jr:$CLASSPATH;done
 
 export CLASSPATH
 
-go test
+go test -v -x
