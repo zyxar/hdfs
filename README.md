@@ -22,16 +22,19 @@ see `go doc`
 
 ### Tips for building libhdfs on OS X ###
 
-1. change `<error.h>` to `<err.h>` in `hdfsJniHelper.c`
+Based on hadoop-1.0.4.
+
+1. change `<error.h>` to `<err.h>` in `src/c++/libhdfs/hdfsJniHelper.c`
 2. change `md5sum` to `md5` in `src/saveVersion.sh`
+2. run `chmod +x src/c++/libhdfs/install-sh`
 3. run `ant -Dcompile.c++=true -Dlibhdfs=true compile-c++-libhdfs` to build libhdfs.
-4. it is ok the build ends up with installation errors if you can already find compiled libs in `build/c++-build/Mac_OS_X-x86_64-64/libhdfs/.libs` or so
-5. put libs in `/usr/lib/java`
-6. change *install_name* for libhdfs: `sudo install_name_tool -id /usr/lib/java/libhdfs.0.dylib /usr/lib/java/libhdfs.0.dylib`
+4. Upon successful building, libraries have been installed in `build/c++/Mac_OS_X-x86_64-64/lib`; `Makefile` in `build/c++-build/Mac_OS_X-x86_64-64/libhdfs` is very helpful for later-on re-compilation. <del>it is ok the build ends up with installation errors if you can already find compiled libs in `build/c++-build/Mac_OS_X-x86_64-64/libhdfs/.libs` or so</del>
+5. change *install_name* for libhdfs: `install_name_tool -id /usr/lib/java/libhdfs.0.0.0.dylib libhdfs.0.0.0.dylib`
+6. put `libhdfs*.dylib` in `/usr/lib/java`
 
 ### Tips for building libhadoop on OS X ###
 
-Based on Hadoop-1.0.1; libhadoop would be loaded by `util.NativeCodeLoader` when accessing local file system.
+Based on hadoop-1.0.1; libhadoop would be loaded by `util.NativeCodeLoader` when accessing local file system.
 
 1. java: change `-ljvm` to `-framework JavaVM` in both `Makefile.am` and `Makefile.in`
 2. libz: apply [patch](https://issues.apache.org/jira/secure/attachment/12423498/HADOOP-3659.patch) to `acinclude.m4`:
@@ -73,3 +76,4 @@ Based on Hadoop-1.0.1; libhadoop would be loaded by `util.NativeCodeLoader` when
 # Known Issues #
 
 1. <del>Currently connecting to local file system is not handled correctly. So `Connect("", 0)` would lead to error.</del> It is okay now to access to local file system.
+1. `errno` in libhdfs is not handled precisely. For example, `invokeMethod()` would probably sets `errno` to **2** in a lot of routines.
